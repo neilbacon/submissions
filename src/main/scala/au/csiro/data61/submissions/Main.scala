@@ -17,10 +17,10 @@ import java.io.File
 object Main {
   private val log = Logger(getClass)
   
-  case class CliOption(download: Boolean, extract: Boolean, train: Boolean, summarize: Boolean, submissionDir: File, trainingDir: File, model: File)
+  case class CliOption(download: Boolean, extract: Boolean, train: Boolean, summarize: Boolean, nerFilter: Boolean, submissionDir: File, trainingDir: File, model: File)
   
   def getCliOption(args: Seq[String]) = {
-    val defaultCliOption = CliOption(false, false, false, false, new File("data/submissions"), new File("data/train"), new File("data/model/tagging_model"))
+    val defaultCliOption = CliOption(false, false, false, false, false, new File("data/submissions"), new File("data/train"), new File("data/model/tagging_model"))
     
     val parser = new scopt.OptionParser[CliOption]("submissions") {
       head("submissions", "0.x")
@@ -37,6 +37,9 @@ object Main {
       opt[Unit]('s', "summarize") action { (_, c) =>
         c.copy(summarize = true)
       } text (s"summarize docs - key phrase extraction (default ${defaultCliOption.summarize})")
+      opt[Unit]('n', "nerFilter") action { (_, c) =>
+        c.copy(nerFilter = true)
+      } text (s"filter JSON ner data from stdin to stdout (default ${defaultCliOption.nerFilter})")
       opt[File]('z', "submissionDir") action { (f, c) =>
         c.copy(submissionDir = f)
       } text (s"work directory for files (default ${defaultCliOption.submissionDir})")
@@ -57,6 +60,7 @@ object Main {
       if (c.extract) PDFExtract.text(c)
       if (c.train) Summarize.train(c)
       if (c.summarize) Summarize.summarize(c)
+      if (c.nerFilter) NerFilter.filter(c)
     }
   }
 }
