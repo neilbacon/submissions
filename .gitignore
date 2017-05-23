@@ -47,6 +47,7 @@ test-bin/
 target/
 
 # project generated files
+data/index
 data/submissions/*.pdf
 data/submissions/*.txt
 data/submissions/*.sum

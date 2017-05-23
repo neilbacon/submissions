@@ -55,21 +55,61 @@ to:
 - save key phrases extracted with the Kea and WINGNUS algorithms (using the above docFreqs) to `data/submissions/*.kea` and `data/submissions/*.wingus` respectively.
 
 ## Named Entity Recognition (NER)
+Build the dataFusion project:
+
+    cd ~/sw
+    git clone git@github.com:NICTA/dataFusion.git
+    cd dataFusion
+    source ./setenv.sh  # set env for MITIE
+    sbt one-jar         # build
+    cd ../submissions
+    
 Convert text files to JSON suitable as input to [dataFusion-ner](https://github.com/NICTA/dataFusion/tree/master/dataFusion-ner) and perform NER:
 
     node txtToDocIn.js data/submissions/*.txt > source.json
-    cd ../dataFusion
-    source ./setenv.sh
-    cd ../submissions
     java -Xmx7G -jar ../dataFusion/dataFusion-ner/target/scala-2.12/datafusion-ner_2.12-0.1-SNAPSHOT-one-jar.jar --cliNer < source.json > ner.json
 
 Inspection of the NER output may suggest some text pre-processing that could improve the results.
 
-Cleanup NER results, calculate a network of NER proximity (similar to dataFusion project - outputting results to `node.json` and `edge.json`), run a graph-service on this data and get the top 50 (shortest) edges from those connecting the top 50 most connected nodes:
+Cleanup NER results, calculate a network of NER proximity (similar to dataFusion project - outputting results to `node.json` and `edge.json`), run a graph-service on this data, serve the UI with a python web server:
 
+    # cleanup NER results
     java -jar target/scala-2.12/submissions_2.12-0.1-one-jar.jar --nerFilter < ner.json > nerFiltered.json
+    # calculate a network of NER proximity, outputting results to `node.json` and `edge.json`
     node nersToNodeEdge.js < nerFiltered.json
+    # run a JSON web service on data from `node.json` and `edge.json`
     java -jar ../dataFusion/dataFusion-graph/target/scala-2.12/datafusion-graph_2.12-0.1-SNAPSHOT-one-jar.jar &
-    curl --header 'Content-Type: application/json' http://0.0.0.0:8089/api/topConnectedGraph?num=50
+    # run a web server for the UI
+    ( cd ui; python3 -m http.server ) &
 
-Now we need to modify `dataFusion/ui2` to visualize it.
+Access the UI at: http://localhost:8000/
+
+## Term vector Visualization
+See:
+- https://github.com/NICTA/termvect-viz
+- https://github.com/NICTA/termvect-viz/blob/master/clusteval/3NewsGroups.pdf
+
+Build the termvect-viz project:
+
+    cd ~/sw
+    git clone git@github.com:NICTA/termvect-viz.git
+    cd termvect-viz/termvect
+    # build Java code
+    mvn
+    
+    # build C++ code:
+    cd ../bh_tsne
+    g++ quadtree.cpp tsne.cpp -o bh_tsne -O3 -lblas
+    
+    
+Run it on our *.txt files with parameters suggested by the 3NewsGroup.pdf report (linked above):
+
+    cd ~/sw/submissions
+    java -jar ../termvect-viz/termvect/target/termvect-0.1-SNAPSHOT.one-jar.jar --docDir data/submissions --docSuffix '.txt' --indexDir data/index --minDocFreq 2 --maxDocFreq 100 --excludeTerm '^[0-9.,-]+$' --tfCalc 3 --idfCalc 0 --terms terms --corpus corpus --paths paths
+    # see sw/termvect/src/main/scripts/run.sh
+    ../termvect-viz/bh_tsne/bh_tsne 2.5 6.0 500 < terms > bh.out
+    sed -e '1,2d' -e 's/ $//' -e 's/ /\t/' bh.out > bh.matrix
+    ( echo -e "x\ty\tpath"; awk -F/ '{print $3}' paths | paste bh.matrix - ) > ui/bh.matrix.withPath
+    
+Visualize this data in UI at: http://localhost:8000/ using `Graph type: T-SNE`.
+    
