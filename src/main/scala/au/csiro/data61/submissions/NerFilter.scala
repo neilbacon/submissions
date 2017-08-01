@@ -1,11 +1,10 @@
 package au.csiro.data61.submissions
 
 import com.typesafe.scalalogging.Logger
-import au.csiro.data61.dataFusion.common.Data._
+import au.csiro.data61.dataFusion.common.Data._, JsonProtocol._
 import au.csiro.data61.submissions.Main.CliOption
 import scala.io.Codec
-import argonaut.Argonaut._
-import argonaut.CodecJson
+import spray.json._
 
 object NerFilter {
   private val log = Logger(getClass)
@@ -42,11 +41,11 @@ object NerFilter {
     val nerTypes = Set("PERSON", "ORGANIZATION", "LOCATION") // not interested in others
     val nerTypPred = (n: Ner) => nerTypes.contains(n.typ)
     
-    val docs = io.Source.fromInputStream(System.in).getLines.map(_.decodeOption[DocOut].get).toList
+    val docs = io.Source.fromInputStream(System.in).getLines.map(_.parseJson.convertTo[Doc]).toList
     
     // get top and bottom quartiles for each NER impl separately for PERSON, ORGANIZATION and LOCATION
     val quartiles = {
-      val ners = docs.flatMap { d => d.ner.filter(nerTypPred) ++ d.embedded.toList.flatMap(_.flatMap(_.ner.filter(nerTypPred))) }.groupBy(n => (n.impl, n.typ))
+      val ners = docs.flatMap { d => d.ner.filter(nerTypPred) ++ d.embedded.flatMap(_.ner.filter(nerTypPred)) }.groupBy(n => (n.impl, n.typ))
       (for {
         typ <- nerTypes
       } yield ("CoreNLP", typ) -> (0.5d, 2.0d) // fake because all CoreNLP scores are 1.0d
@@ -92,7 +91,7 @@ object NerFilter {
           n
         }
       }.toList
-      if (ner.nonEmpty) println(d.copy(ner = ner.toList).asJson.nospaces)
+      println(d.copy(ner = ner).toJson.compactPrint)
     }
   }
   

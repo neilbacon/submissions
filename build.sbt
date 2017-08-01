@@ -36,7 +36,7 @@ libraryDependencies ++= Seq(
     "com.entopix" % "maui" % "1.3.1-SNAPSHOT" exclude("org.slf4j", "slf4j-log4j12"),
     // "org.http4s" %% "http4s-blaze-client" % "0.15.11",
     // "org.http4s" %% "http4s-argonaut" % "0.15.11",
-    "au.csiro.data61" %% "datafusion-common" % "0.1-SNAPSHOT",
+    "au.csiro.data61" %% "datafusion-common" % "0.2-SNAPSHOT",
     "com.github.scopt" % "scopt_2.12" % "3.5.0",
     "com.jsuereth" %% "scala-arm" % "2.0",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
